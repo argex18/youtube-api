@@ -116,10 +116,8 @@ class Youtube:
                 else:
                     raise TypeError('Error: Invalid opt argument')
 
-            if options.get('mine'):
-                response = httplib2.AuthorizedHttp(cls.token, http).request(f'https://www.googleapis.com/youtube/v3/subscriptions?part={options["part"]}&mine={options["mine"]}', 'GET')
-            else:
-                response = httplib2.AuthorizedHttp(cls.token, http).request(f'https://www.googleapis.com/youtube/v3/subscriptions?part={options["part"]}&channelId={options["channelId"]}', 'GET')
+            request = cls.__buildHttp(http, options, 'https://www.googleapis.com/youtube/v3/subscriptions')
+            response = request['request'].request(request['url'], request['method'])
             
             body = json.loads(response[1].decode('utf-8'))
             response = body
@@ -193,10 +191,8 @@ class Youtube:
                 else:
                     raise TypeError('Error: Invalid opt argument')
 
-            if options.get('mine'):
-                response = httplib2.AuthorizedHttp(cls.token, http).request(f'https://www.googleapis.com/youtube/v3/playlists?part={options["part"]}&mine={options["mine"]}', 'GET')
-            else:
-                response = httplib2.AuthorizedHttp(cls.token, http).request(f'https://www.googleapis.com/youtube/v3/playlists?part={options["part"]}&id={options["id"]}', 'GET')
+            request = cls.__buildHttp(http, options, 'https://www.googleapis.com/youtube/v3/playlists')
+            response = request['request'].request(request['url'], request['method'])
 
             body = json.loads(response[1].decode('utf-8'))
             response = body
@@ -241,7 +237,9 @@ class Youtube:
                 else:
                     raise TypeError('Error: Invalid opt argument')
             
-            response = httplib2.AuthorizedHttp(cls.token, http).request(f'https://www.googleapis.com/youtube/v3/videos?part={options["part"]}&id={options["id"]}', 'GET')
+            request = cls.__buildHttp(http, options, 'https://www.googleapis.com/youtube/v3/videos')
+            response = request['request'].request(request['url'], request['method'])
+
             body = json.loads(response[1].decode('utf-8'))
             response = body
 
@@ -257,7 +255,14 @@ class Youtube:
                 raise TypeError('Error: id must be a string')
             http = googleapiclient.http.build_http()
 
-            request = httplib2.AuthorizedHttp(cls.token, http).request(f'https://www.googleapis.com/youtube/v3/videos/rate?id={id}&rating=like', 'POST')
+            options = {
+                'id': id,
+                'rating': 'like'
+            }
+
+            request = cls.__buildHttp(http, options, 'https://www.googleapis.com/youtube/v3/videos/rate', 'POST')
+            request = request['request'].request(request['url'], request['method'])
+
             status = request[0]['status']
             if status == '204':
                 return True
@@ -273,7 +278,14 @@ class Youtube:
                 raise TypeError('Error: id must be a string')
             http = googleapiclient.http.build_http()
 
-            request = httplib2.AuthorizedHttp(cls.token, http).request(f'https://www.googleapis.com/youtube/v3/videos/rate?id={id}&rating=none', 'POST')
+            options = {
+                'id': id,
+                'rating': 'none'
+            }
+
+            request = cls.__buildHttp(http, options, 'https://www.googleapis.com/youtube/v3/videos/rate', 'POST')
+            request = request['request'].request(request['url'], request['method'])
+            
             status = request[0]['status']
             if status == '204':
                 return True
@@ -281,3 +293,36 @@ class Youtube:
                 return False
         except Exception:
             print_exc()
+    @classmethod
+    def __buildHttp(cls, http, options, url, method='GET'):
+        _http = None
+        try:
+            if not isinstance(options, dict):
+                if options == None:
+                    options = {}
+                else:
+                    raise TypeError('Error: options must be a dict')
+            if not isinstance(http, googleapiclient.http.httplib2.Http):
+                raise TypeError('Error: http must be an http request of googlepiclient.http.httplib2.Http class')
+            if not isinstance(url, str):
+                raise TypeError('Error: url must be a str')
+            if not isinstance(method, str):
+                raise TypeError('Error: method must be a str')
+
+            _request = httplib2.AuthorizedHttp(cls.token, http)
+            _options = options
+            _url = f'{url}?'
+            _method = method
+
+            for key,value in dict(_options).items():
+                _url += f'{key}={value}&'
+            
+            _http = {
+                'request': _request,
+                'url': _url,
+                'method': _method
+            }
+        except Exception:
+            print_exc()
+        finally:
+            return _http
